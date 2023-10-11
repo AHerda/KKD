@@ -1,12 +1,12 @@
 mod libs;
 
-use libs::{helpers, functions};
+use libs::{functions, helpers};
 
 fn main() {
     let dane: helpers::Dane = helpers::read_args();
     let file_content: String = helpers::read_file(dane.file_path);
     let total_bytes = file_content.len();
-    let bytes_counted: Vec<u32> = functions::count_bytes(file_content);
+    let bytes_counted: Vec<u32> = functions::count_bytes(&file_content);
 
     // println!("{:?}", bytes_counted);
     // bytes_counted.iter().enumerate().for_each(|(byte, value)| println!("{}: {}", byte as u8 as char, value));
@@ -15,4 +15,6 @@ fn main() {
 
     // println!("{:?}", probability);
     // probability.iter().enumerate().for_each(|(byte, value)| println!("{}: {}", byte as u8 as char, value));
+
+    let conditional_probability = functions::conditional_probability(&file_content);
 }
