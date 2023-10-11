@@ -28,9 +28,12 @@ pub fn read_args() -> Dane {
     }
 }
 
-pub fn read_file(file_path: String) -> String {
-    std::fs::read_to_string(file_path).unwrap_or_else(|err| {
-        eprintln!("{err}");
-        std::process::exit(1);
-    })
+pub fn read_file(file_path: &str) -> Vec<u8> {
+    match std::fs::read(file_path) {
+        Ok(v) => v,
+        Err(err) => {
+            eprintln!("{err}");
+            std::process::exit(1);
+        }
+    }
 }
