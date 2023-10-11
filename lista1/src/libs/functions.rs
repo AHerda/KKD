@@ -1,6 +1,6 @@
 use rayon::prelude::*;
 
-pub fn count_bytes(content: &String) -> Vec<u32> {
+pub fn count_bytes(content: &str) -> Vec<u32> {
     let mut count: Vec<u32> = vec![0; 256];
 
     for c in content.bytes() {
@@ -17,7 +17,7 @@ pub fn probability(count_tab: Vec<u32>, total_count: u32) -> Vec<f64> {
         .collect()
 }
 
-pub fn conditional_probability(content: &String) -> Vec<Vec<f64>> {
+pub fn conditional_probability(content: &str) -> Vec<Vec<f64>> {
     let bytes: Vec<u8> = content.bytes().collect();
 
     let mut cond_count_tab: Vec<Vec<i32>> = vec![vec![0; 256]; 256];

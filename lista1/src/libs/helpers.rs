@@ -8,17 +8,12 @@ pub fn read_args() -> Dane {
     let mut args = std::env::args();
     let mut file_path: Option<String> = None;
     let mut table = false;
-    loop {
-        match args.next() {
-            Some(s) => {
-                if s == "--table" {
-                    table = true;
-                } else if s == "--src" {
-                    file_path = args.next();
-                }
-            }
-            None => break,
-        };
+    while let Some(s) = args.next() {
+        if s == "--table" {
+            table = true;
+        } else if s == "--src" {
+            file_path = args.next();
+        }
     }
 
     match file_path {
