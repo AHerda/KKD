@@ -1,4 +1,5 @@
-use rayon::prelude::*;
+use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
+
 
 pub fn count_bytes(content: &Vec<u8>) -> Vec<u32> {
     let mut count: Vec<u32> = vec![0; 256];
