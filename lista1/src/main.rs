@@ -24,7 +24,7 @@ fn main() {
                     .apply_modifier(UTF8_ROUND_CORNERS)
                     .set_content_arrangement(ContentArrangement::Dynamic);
 
-                table.set_header(vec!["File Name", "Entropy", "Conditional Entropy"]);
+                table.set_header(vec!["File Name", "Entropy", "Conditional Entropy", "Difference"]);
 
                 entropies
                     .iter()
@@ -33,6 +33,7 @@ fn main() {
                             format!("{}", file_name),
                             format!("{}", entropy),
                             format!("{}", cond_entropy),
+                            format!("{}", (entropy - cond_entropy).abs())
                         ]);
                     });
 
@@ -42,12 +43,12 @@ fn main() {
 
                 print!("{table}");
             } else {
-                println!("file_name;entropy;conditional_entropy");
+                println!("file_name;entropy;conditional_entropy;difference");
 
                 entropies
                     .par_iter()
                     .for_each(|(file_name, (entropy, cond_entropy))| {
-                        println!("{};{};{}", file_name, entropy, cond_entropy);
+                        println!("{};{};{};{}", file_name, entropy, cond_entropy, (entropy - cond_entropy).abs());
                     });
             }
         }
@@ -65,8 +66,8 @@ fn main() {
                     .set_content_arrangement(ContentArrangement::Dynamic);
 
                 table
-                    .set_header(vec!["Entropy", "Conditional Entropy"])
-                    .add_row(vec![format!("{}", entropy), format!("{}", cond_entropy)]);
+                    .set_header(vec!["Entropy", "Conditional Entropy", "Difference"])
+                    .add_row(vec![format!("{}", entropy), format!("{}", cond_entropy), format!("{}", (entropy - cond_entropy).abs())]);
 
                 table
                     .column_iter_mut()
@@ -74,8 +75,8 @@ fn main() {
 
                 print!("{table}");
             } else {
-                println!("entropy;conditional_entropy");
-                println!("{};{}", entropy, cond_entropy);
+                println!("entropy;conditional_entropy;difference");
+                println!("{};{};{}", entropy, cond_entropy, (entropy - cond_entropy).abs());
             }
         }
         helpers::PathType::None => panic!("Wtf Dude?!?!"),
