@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 entropy = { path = "../entropy" }
+rayon = "1.8.0"
