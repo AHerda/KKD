@@ -12,11 +12,21 @@ pub fn count_bytes(content: &[u8]) -> Vec<u32> {
 
 pub fn probability(content: &[u8]) -> Vec<f64> {
     let total_count = content.len();
-    let count_tab: Vec<u32> = count_bytes(content);
+    let count_tab = count_bytes(content);
     count_tab
         .par_iter()
         .map(|x| *x as f64 / total_count as f64)
         .collect()
+}
+
+pub fn cumulative_probability(content: &[u8]) -> Vec<f64> {
+    let mut c_probability: Vec<f64> = Vec::new();
+    let probability = probability(content);
+    c_probability.push(probability[0]);
+    for i in 1..256 {
+        c_probability.push(c_probability[i - 1] + probability[i]);
+    }
+    c_probability
 }
 
 pub fn conditional_probability(content: &[u8]) -> Vec<Vec<f64>> {
