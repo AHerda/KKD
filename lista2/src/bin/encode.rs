@@ -40,10 +40,10 @@ fn main() {
 }
 
 fn run(input_file: &str, output_file: &str) -> Result<(), Box<dyn std::error::Error>> {
-    let mut input = File::open(input_file)?;
-    let mut output = File::create(output_file)?;
+    let input = File::open(input_file)?;
+    let output = File::create(output_file)?;
 
-    let mut cmodel = ModelA::new();
+    let cmodel = ModelA::new();
     cmodel.model_metrics.dump("cmodel");
 
     println!("compressing...");

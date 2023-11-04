@@ -1,6 +1,6 @@
-use std::io::{Write, Read, Result};
+use std::io::{Read, Result, Write, ErrorKind};
 
-use super::byteio::{OutputBytes, InputBytes};
+use super::byteio::{InputBytes, OutputBytes};
 
 pub struct OutputBits<T> {
     output: OutputBytes<T>,
@@ -50,10 +50,10 @@ impl<T: Read> InputBits<T> {
 
     pub fn get_bit(&mut self) -> Result<bool> {
         if self.last_mask == 1 {
-            self.current_byte = self.input.get_byte().unwrap() as i32;
+            self.current_byte = self.input.get_byte().unwrap_or(0) as i32;
             if self.current_byte < 0 {
                 if self.code_value_bits <= 0 {
-                    return Err(std::io::Error::new(std::io::ErrorKind::Other, "EOF on input"));
+                    return Err(ErrorKind::UnexpectedEof.into());
                 } else {
                     self.code_value_bits -= 8;
                 }

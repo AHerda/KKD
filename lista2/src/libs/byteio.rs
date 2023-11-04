@@ -1,6 +1,7 @@
+use std::io::ErrorKind;
 use std::io::Read;
-use std::io::Write;
 use std::io::Result;
+use std::io::Write;
 
 pub struct OutputBytes<T> {
     stream: T,
@@ -27,9 +28,9 @@ impl<T: Read> InputBytes<T> {
 
     pub fn get_byte(&mut self) -> Result<usize> {
         let mut buf = [0_u8; 1];
-        self.stream.read(&mut buf)
+        match self.stream.read(&mut buf) {
+            Ok(0) => Err(ErrorKind::UnexpectedEof.into()),
+            _ => Ok(buf[0].into())
+        }
     }
 }
-
-
-

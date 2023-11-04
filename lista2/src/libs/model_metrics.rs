@@ -33,12 +33,21 @@ impl ModelMetrics {
     pub fn dump(&self, name: &str) {
         println!("Model {} created with:", name);
         println!("CODE_VALUE of type usize with {} bits", self.precision);
-        println!("CODE_VALUE_BITS {} bits giving MAX_CODE of {}", self.code_value_bits, self.max_code);
-        println!("FREQUENCY_BITS {} bits giving MAX_FREQUENCY of {}", self.frequency_bits, self.max_freq);
+        println!(
+            "CODE_VALUE_BITS {} bits giving MAX_CODE of {}",
+            self.code_value_bits, self.max_code
+        );
+        println!(
+            "FREQUENCY_BITS {} bits giving MAX_FREQUENCY of {}",
+            self.frequency_bits, self.max_freq
+        );
         println!("MAX_CODE: {} (0x{:x})", self.max_code, self.max_code);
         println!("MAX_FREQ: {} (0x{:x})", self.max_freq, self.max_freq);
         println!("ONE_FOURTH: {} (0x{:x})", self.one_fourth, self.one_fourth);
         println!("ONE_HALF: {} (0x{:x})", self.one_half, self.one_half);
-        println!("THREE_FOURTHS: {} (0x{:x})", self.three_fourths, self.three_fourths);
+        println!(
+            "THREE_FOURTHS: {} (0x{:x})",
+            self.three_fourths, self.three_fourths
+        );
     }
 }

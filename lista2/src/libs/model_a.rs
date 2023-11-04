@@ -1,4 +1,6 @@
-use std::{ops::AddAssign, ffi::NulError};
+use std::ops::AddAssign;
+
+use rayon::prelude::{IntoParallelRefMutIterator, IndexedParallelIterator, ParallelIterator};
 
 use super::model_metrics::ModelMetrics;
 
@@ -15,9 +17,9 @@ impl ModelA {
 
     pub fn new() -> ModelA {
         let mut cumulative_frequency = [0; 258];
-        for i in 0..258 {
-            cumulative_frequency[i] = i;
-        }
+        cumulative_frequency.par_iter_mut().enumerate().for_each(|(i, item)| {
+            *item = i;
+        });
 
         ModelA {
             cumulative_frequency,
@@ -93,7 +95,7 @@ pub struct Prob {
 }
 
 impl Prob {
-    fn range(&self) -> usize {
+    fn _range(&self) -> usize {
         self.high - self.low
     }
 }

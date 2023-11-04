@@ -30,10 +30,10 @@ fn main() {
         std::process::exit(255);
     }
     match File::open(&args[1]) {
-        Ok(mut input) => {
+        Ok(input) => {
             match File::create(&args[2]) {
-                Ok(mut output) => {
-                    let mut cmodel: ModelA = ModelA::new();
+                Ok(output) => {
+                    let cmodel: ModelA = ModelA::new();
                     cmodel.model_metrics.dump("cmodel");
                     println!("decompressing...");
                     _ = decompress(input, output, cmodel);

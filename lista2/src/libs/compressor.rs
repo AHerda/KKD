@@ -1,7 +1,7 @@
 use std::fs::File;
-use std::io::{Read, Write};
-use std::io::Result;
 use std::io::ErrorKind;
+use std::io::Result;
+use std::io::{Read, Write};
 
 use super::bitio::OutputBits;
 use super::byteio::{InputBytes, OutputBytes};
@@ -28,7 +28,7 @@ impl<R: Read, W: Write> Compressor<R, W> {
         let mut high = self.model.model_metrics.max_code;
         loop {
             let c = match self.input.get_byte() {
-                Ok(byte) => byte as i32,
+                Ok(byte) => byte,
                 Err(e) => {
                     if e.kind() == ErrorKind::UnexpectedEof {
                         256
@@ -37,22 +37,28 @@ impl<R: Read, W: Write> Compressor<R, W> {
                     }
                 }
             };
-            let p = self.model.get_probability(c as usize);
+            let p = self.model.get_probability(c);
             let range = high - low + 1;
+
             high = low + (range * p.high / p.count) - 1;
             low = low + (range * p.low / p.count);
-            for _ in 0.. {
+            loop {
                 if high < self.model.model_metrics.one_half {
                     self.put_bit_plus_pending(0, &mut pending_bits)?;
-                } else if low >= self.model.model_metrics.one_half {
+                }
+                else if low >= self.model.model_metrics.one_half {
                     self.put_bit_plus_pending(1, &mut pending_bits)?;
-                } else if low >= self.model.model_metrics.one_fourth && high < self.model.model_metrics.three_fourths {
+                }
+                else if low >= self.model.model_metrics.one_fourth
+                    && high < self.model.model_metrics.three_fourths {
                     pending_bits += 1;
                     low -= self.model.model_metrics.one_fourth;
                     high -= self.model.model_metrics.one_fourth;
-                } else {
+                } 
+                else {
                     break;
                 }
+
                 high <<= 1;
                 high += 1;
                 low <<= 1;
@@ -69,7 +75,7 @@ impl<R: Read, W: Write> Compressor<R, W> {
         } else {
             self.put_bit_plus_pending(1, &mut pending_bits)?;
         }
-        // self.output.flush()?; What this function supposed to do???
+        // self.output.flush()?; // What this function supposed to do???
         Ok(())
     }
 
