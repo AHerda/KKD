@@ -1,4 +1,4 @@
-use std::io::{Read, Result, Write, ErrorKind};
+use std::io::{ErrorKind, Read, Result, Write};
 
 use super::byteio::{InputBytes, OutputBytes};
 
@@ -61,7 +61,7 @@ impl<T: Read> InputBits<T> {
 
     pub fn get_bit(&mut self) -> Result<bool> {
         if self.last_mask == 1 {
-            self.current_byte = self.input.get_byte().unwrap_or(0) as i32;
+            self.current_byte = self.input.get_byte()? as i32;
             if self.current_byte < 0 {
                 if self.code_value_bits <= 0 {
                     return Err(ErrorKind::UnexpectedEof.into());

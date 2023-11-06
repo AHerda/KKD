@@ -1,6 +1,6 @@
 use std::ops::AddAssign;
 
-use rayon::prelude::{IntoParallelRefMutIterator, IndexedParallelIterator, ParallelIterator};
+use rayon::prelude::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 
 use super::model_metrics::ModelMetrics;
 
@@ -17,9 +17,12 @@ impl ModelA {
 
     pub fn new() -> ModelA {
         let mut cumulative_frequency = [0; 258];
-        cumulative_frequency.par_iter_mut().enumerate().for_each(|(i, item)| {
-            *item = i;
-        });
+        cumulative_frequency
+            .par_iter_mut()
+            .enumerate()
+            .for_each(|(i, item)| {
+                *item = i;
+            });
 
         ModelA {
             cumulative_frequency,

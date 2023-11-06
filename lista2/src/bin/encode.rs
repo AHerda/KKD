@@ -1,6 +1,3 @@
-use entropy;
-
-
 use std::fs::{File, read};
 use lista2::libs::{model_a::ModelA, compressor::compress};
 
@@ -26,9 +23,10 @@ fn run(input_file: &str, output_file: &str) -> Result<(), Box<dyn std::error::Er
     let output = File::create(output_file)?;
 
     let cmodel = ModelA::new();
-    let len_after = compress(input, output, cmodel)?;
+    let (len_after_bytes, len_after_bits): (usize, usize) = compress(input, output, cmodel)?;
 
     println!("Entropia: {}", entropy::entropy(&content));
-    println!("Stopień kompresji: {}", len_before as f64 / len_after as f64);
+    println!("Średnia długość kodowania: {}", len_after_bits as f64 / len_before as f64);
+    println!("Stopień kompresji: {}", len_before as f64 / len_after_bytes as f64);
     Ok(())
 }

@@ -22,7 +22,7 @@ impl<R: Read, W: Write> Compressor<R, W> {
         }
     }
 
-    fn compress(&mut self) -> Result<usize> {
+    fn compress(&mut self) -> Result<(usize, usize)> {
         let mut pending_bits = 0;
         let mut low = 0;
         let mut high = self.model.model_metrics.max_code;
@@ -45,17 +45,15 @@ impl<R: Read, W: Write> Compressor<R, W> {
             loop {
                 if high < self.model.model_metrics.one_half {
                     self.put_bit_plus_pending(0, &mut pending_bits)?;
-                }
-                else if low >= self.model.model_metrics.one_half {
+                } else if low >= self.model.model_metrics.one_half {
                     self.put_bit_plus_pending(1, &mut pending_bits)?;
-                }
-                else if low >= self.model.model_metrics.one_fourth
-                    && high < self.model.model_metrics.three_fourths {
+                } else if low >= self.model.model_metrics.one_fourth
+                    && high < self.model.model_metrics.three_fourths
+                {
                     pending_bits += 1;
                     low -= self.model.model_metrics.one_fourth;
                     high -= self.model.model_metrics.one_fourth;
-                } 
-                else {
+                } else {
                     break;
                 }
 
@@ -76,7 +74,7 @@ impl<R: Read, W: Write> Compressor<R, W> {
             self.put_bit_plus_pending(1, &mut pending_bits)?;
         }
 
-        Ok(self.output.outputed_bytes())
+        Ok((self.output.outputed_bytes(), self.output.outputed_bits()))
     }
 
     fn put_bit_plus_pending(&mut self, bit: u8, pending_bits: &mut u8) -> Result<()> {
@@ -89,7 +87,7 @@ impl<R: Read, W: Write> Compressor<R, W> {
     }
 }
 
-pub fn compress(source: File, target: File, model: ModelA) -> Result<usize> {
+pub fn compress(source: File, target: File, model: ModelA) -> Result<(usize, usize)> {
     let mut compressor = Compressor::new(source, target, model);
     compressor.compress()
 }

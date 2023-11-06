@@ -10,7 +10,10 @@ pub struct OutputBytes<T> {
 
 impl<T: Write> OutputBytes<T> {
     pub fn new(stream: T) -> Self {
-        OutputBytes { stream, outputed: 0 }
+        OutputBytes {
+            stream,
+            outputed: 0,
+        }
     }
 
     pub fn put_byte(&mut self, c: u8) -> Result<usize> {
@@ -36,7 +39,7 @@ impl<T: Read> InputBytes<T> {
         let mut buf = [0_u8; 1];
         match self.stream.read(&mut buf) {
             Ok(0) => Err(ErrorKind::UnexpectedEof.into()),
-            _ => Ok(buf[0].into())
+            _ => Ok(buf[0].into()),
         }
     }
 }

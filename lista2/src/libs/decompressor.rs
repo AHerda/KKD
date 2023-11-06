@@ -23,7 +23,6 @@ impl<R: Read, W: Write> Decompressor<R, W> {
     }
 
     pub fn decompress(&mut self) -> std::io::Result<()> {
-
         let mut high = self.m_model.model_metrics.max_code;
         let mut low = 0;
         let mut value = 0;
