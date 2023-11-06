@@ -31,9 +31,9 @@ impl ModelA {
 
     fn pacify(&mut self) {
         self.bytes_processed += 1;
-        if self.bytes_processed % 1000 == 0 {
-            print!("\r{}", self.bytes_processed);
-        }
+        // if self.bytes_processed % 1000 == 0 {
+        //     print!("\r{}", self.bytes_processed);
+        // }
     }
 
     fn frozen(&self) {

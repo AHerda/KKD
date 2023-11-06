@@ -6,6 +6,7 @@ pub struct OutputBits<T> {
     output: OutputBytes<T>,
     next_byte: u8,
     mask: u8,
+    outputed: usize,
 }
 
 impl<T: Write> OutputBits<T> {
@@ -14,10 +15,12 @@ impl<T: Write> OutputBits<T> {
             output,
             next_byte: 0,
             mask: 0x80,
+            outputed: 0,
         }
     }
 
     pub fn put_bit(&mut self, val: bool) -> Result<usize> {
+        self.outputed += 1;
         if val {
             self.next_byte |= self.mask;
         }
@@ -28,6 +31,14 @@ impl<T: Write> OutputBits<T> {
             self.next_byte = 0;
         }
         Ok(0)
+    }
+
+    pub fn outputed_bits(&self) -> usize {
+        self.outputed
+    }
+
+    pub fn outputed_bytes(&self) -> usize {
+        self.output.outputed()
     }
 }
 

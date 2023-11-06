@@ -1,27 +1,7 @@
-// use entropy;
-
-// use lista2::libs::{code::{encode, to_string}, helpers::{Files, get_args, read_file}};
-
-// fn main() {
-//     let file_paths: Files = get_args();
-//     println!("{}\n{}", file_paths.input_path, file_paths.output_path);
-//     let content: String = read_file(&file_paths.input_path);
-//     let bytes: &[u8] = content.as_bytes();
-//     let entropy = entropy::entropy(&bytes);
-//     let _byte_count: Vec<u32> = entropy::count_bytes(&bytes);
-//     let _probability: Vec<f64> = entropy::probability(&bytes);
-//     let length: usize = content.len();
-//     println!("Długość: {length}\nEntropia: {entropy}");
-
-//     let (compressed, z, m, size) = encode(bytes);
-//     println!("Compressed: {}", to_string(&compressed));
-//     println!("Compressed size: {size}");
-//     println!("Size: {m}");
-//     println!("z = {z}");
-// }
+use entropy;
 
 
-use std::fs::File;
+use std::fs::{File, read};
 use lista2::libs::{model_a::ModelA, compressor::compress};
 
 fn main() {
@@ -41,14 +21,14 @@ fn main() {
 
 fn run(input_file: &str, output_file: &str) -> Result<(), Box<dyn std::error::Error>> {
     let input = File::open(input_file)?;
+    let content = read(input_file).unwrap();
+    let len_before = content.len();
     let output = File::create(output_file)?;
 
     let cmodel = ModelA::new();
-    cmodel.model_metrics.dump("cmodel");
+    let len_after = compress(input, output, cmodel)?;
 
-    println!("compressing...");
-    compress(input, output, cmodel)?;
-
-    // println!("{}", cmodel.m_bytes_processed);
+    println!("Entropia: {}", entropy::entropy(&content));
+    println!("Stopień kompresji: {}", len_before as f64 / len_after as f64);
     Ok(())
 }

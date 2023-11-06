@@ -35,7 +35,7 @@ fn main() {
                 Ok(output) => {
                     let cmodel: ModelA = ModelA::new();
                     cmodel.model_metrics.dump("cmodel");
-                    println!("decompressing...");
+                    // println!("decompressing...");
                     _ = decompress(input, output, cmodel);
                     // println!("{}", cmodel.bytes_processed);
                     std::process::exit(0);

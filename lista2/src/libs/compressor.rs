@@ -22,7 +22,7 @@ impl<R: Read, W: Write> Compressor<R, W> {
         }
     }
 
-    fn compress(&mut self) -> Result<()> {
+    fn compress(&mut self) -> Result<usize> {
         let mut pending_bits = 0;
         let mut low = 0;
         let mut high = self.model.model_metrics.max_code;
@@ -75,8 +75,8 @@ impl<R: Read, W: Write> Compressor<R, W> {
         } else {
             self.put_bit_plus_pending(1, &mut pending_bits)?;
         }
-        // self.output.flush()?; // What this function supposed to do???
-        Ok(())
+
+        Ok(self.output.outputed_bytes())
     }
 
     fn put_bit_plus_pending(&mut self, bit: u8, pending_bits: &mut u8) -> Result<()> {
@@ -89,7 +89,7 @@ impl<R: Read, W: Write> Compressor<R, W> {
     }
 }
 
-pub fn compress(source: File, target: File, model: ModelA) -> Result<()> {
+pub fn compress(source: File, target: File, model: ModelA) -> Result<usize> {
     let mut compressor = Compressor::new(source, target, model);
     compressor.compress()
 }

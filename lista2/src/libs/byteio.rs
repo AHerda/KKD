@@ -5,15 +5,21 @@ use std::io::Write;
 
 pub struct OutputBytes<T> {
     stream: T,
+    outputed: usize,
 }
 
 impl<T: Write> OutputBytes<T> {
     pub fn new(stream: T) -> Self {
-        OutputBytes { stream }
+        OutputBytes { stream, outputed: 0 }
     }
 
     pub fn put_byte(&mut self, c: u8) -> Result<usize> {
+        self.outputed += 1;
         self.stream.write(&[c])
+    }
+
+    pub fn outputed(&self) -> usize {
+        self.outputed
     }
 }
 
