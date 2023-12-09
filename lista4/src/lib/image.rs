@@ -45,11 +45,6 @@ impl Image {
         info!("depth: {}", &depth);
         info!("image size: {}B", img_bytes.len());
 
-        let pixels = img_bytes
-            .chunks(3)
-            .map(|pixel| pixel_from(pixel).unwrap())
-            .collect::<Vec<Pixel>>();
-
         let img = img_bytes
             .chunks(3)
             .map(|pixel| pixel_from(pixel).unwrap())
