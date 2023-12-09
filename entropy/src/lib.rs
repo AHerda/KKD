@@ -1,4 +1,6 @@
 use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
+use std::collections::HashMap;
+use std::hash::Hash;
 
 pub fn count_bytes(content: &[u8]) -> Vec<u32> {
     let mut count: Vec<u32> = vec![0; 256];
@@ -10,14 +12,14 @@ pub fn count_bytes(content: &[u8]) -> Vec<u32> {
     count
 }
 
-pub fn probability(content: &[u8]) -> Vec<f64> {
-    let total_count = content.len();
-    let count_tab = count_bytes(content);
-    count_tab
-        .par_iter()
-        .map(|x| *x as f64 / total_count as f64)
-        .collect()
-}
+// pub fn probability(content: &[u8]) -> Vec<f64> {
+//     let total_count = content.len();
+//     let count_tab = count_bytes(content);
+//     count_tab
+//         .par_iter()
+//         .map(|x| *x as f64 / total_count as f64)
+//         .collect()
+// }
 
 pub fn cumulative_probability(content: &[u8]) -> Vec<f64> {
     let mut c_probability: Vec<f64> = Vec::new();
@@ -49,7 +51,61 @@ pub fn conditional_probability(content: &[u8]) -> Vec<Vec<f64>> {
     cond_probability
 }
 
-pub fn entropy(content: &[u8]) -> f64 {
+// pub fn entropy(content: &[u8]) -> f64 {
+//     let probability: Vec<f64> = probability(content);
+//     let x: f64 = probability
+//         .par_iter()
+//         .fold(
+//             || 0.,
+//             |sum, x| {
+//                 if *x == 0. {
+//                     sum
+//                 } else {
+//                     sum + (x * (1. / x).log2())
+//                 }
+//             },
+//         )
+//         .sum();
+//     if x.is_nan() {
+//         0.
+//     } else {
+//         x
+//     }
+// }
+
+pub fn count<T>(content: &[T]) -> HashMap<T, usize>
+where
+    T: Eq + Ord + Hash + Clone,
+{
+    let mut count: HashMap<T, usize> = HashMap::new();
+
+    for c in content {
+        if let Some(x) = count.get_mut(&c) {
+            *x += 1;
+        } else {
+            count.insert((*c).clone(), 1);
+        }
+    }
+
+    count
+}
+
+pub fn probability<T>(content: &[T]) -> Vec<f64>
+where
+    T: Eq + Ord + Hash + Clone
+{
+    let total_count = content.len();
+    let count_tab = count(content);
+    count_tab
+        .iter()
+        .map(|x| *x.1 as f64 / total_count as f64)
+        .collect()
+}
+
+pub fn entropy<T>(content: &[T]) -> f64
+where
+    T: Eq + Ord + Hash + Clone
+{
     let probability: Vec<f64> = probability(content);
     let x: f64 = probability
         .par_iter()
