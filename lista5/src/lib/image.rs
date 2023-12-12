@@ -1,7 +1,9 @@
-use super::pixel::{pixel_from, Pixel};
-use entropy;
 use log::info;
+use std::fmt::Error;
+use entropy;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+
+pub type Pixel = [u8; 3];
 
 #[derive(Debug, Clone, Copy)]
 pub enum Predictor {
@@ -12,7 +14,15 @@ pub enum Predictor {
     Five,
     Six,
     Seven,
-    New,
+    New
+}
+
+fn pixel_from(colors: &[u8]) -> Result<Pixel, Error> {
+    if colors.len() != 3 {
+        Err(Error)
+    } else {
+        Ok([colors[0], colors[1], colors[2]])
+    }
 }
 
 #[derive(Debug)]
@@ -63,10 +73,13 @@ impl Image {
 
     pub fn diff(&self, prediction: Vec<Vec<Pixel>>) -> Vec<Vec<Pixel>> {
         let mut diff: Vec<Vec<Pixel>> =
-            vec![vec![pixel_from(&[0, 0, 0]).unwrap(); self.width]; self.height];
+            vec![vec![[0, 0, 0]; self.width]; self.height];
         for y in 0..self.height {
             for x in 0..self.width {
-                diff[y][x] = self.img[y][x].abs_diff(prediction[y][x])
+                let red_diff = self.img[y][x][0].abs_diff(prediction[y][x][0]);
+                let green_diff = self.img[y][x][1].abs_diff(prediction[y][x][1]);
+                let blue_diff = self.img[y][x][2].abs_diff(prediction[y][x][2]);
+                diff[y][x] =  [red_diff, green_diff, blue_diff];
             }
         }
         diff
@@ -74,7 +87,7 @@ impl Image {
 
     fn predicton_1(&self) -> Vec<Vec<Pixel>> {
         let mut prediction: Vec<Vec<Pixel>> =
-            vec![vec![pixel_from(&[0, 0, 0]).unwrap(); self.width]; self.height];
+            vec![vec![[0, 0, 0]; self.width]; self.height];
         for y in 0..self.height {
             for x in 1..self.width {
                 prediction[y][x] = self.img[y][x - 1];
@@ -85,7 +98,7 @@ impl Image {
 
     fn predicton_2(&self) -> Vec<Vec<Pixel>> {
         let mut prediction: Vec<Vec<Pixel>> =
-            vec![vec![pixel_from(&[0, 0, 0]).unwrap(); self.width]; self.height];
+            vec![vec![[0, 0, 0]; self.width]; self.height];
         for y in 1..self.height {
             for x in 0..self.width {
                 prediction[y][x] = self.img[y - 1][x];
@@ -96,7 +109,7 @@ impl Image {
 
     fn predicton_3(&self) -> Vec<Vec<Pixel>> {
         let mut prediction: Vec<Vec<Pixel>> =
-            vec![vec![pixel_from(&[0, 0, 0]).unwrap(); self.width]; self.height];
+            vec![vec![[0, 0, 0]; self.width]; self.height];
         for y in 1..self.height {
             for x in 1..self.width {
                 prediction[y][x] = self.img[y - 1][x - 1];
@@ -107,9 +120,9 @@ impl Image {
 
     fn predicton_4(&self) -> Vec<Vec<Pixel>> {
         let mut prediction: Vec<Vec<Pixel>> =
-            vec![vec![pixel_from(&[0, 0, 0]).unwrap(); self.width]; self.height];
+        vec![vec![[0, 0, 0]; self.width]; self.height];
         for x in 1..self.width {
-            prediction[0][x] = self.img[0][x - 1];
+            prediction[0][x] = self.img[0][x -1];
         }
         for y in 1..self.height {
             prediction[y][0] = self.img[y - 1][0];
@@ -117,9 +130,9 @@ impl Image {
         for y in 1..self.height {
             for x in 1..self.width {
                 let north = self.img[y - 1][x];
-                let west = self.img[y][x - 1];
-                let north_west = self.img[y - 1][x - 1];
-                prediction[y][x] = west - north_west + north;
+                let west = self.img[y][x -1];
+                let north_west = self.img[y - 1][x];
+                prediction[y][x] = [north[0] - north_west[0] + west[0], north[1] - north_west[1] + west[1], north[2] - north_west[2] + west[2]];
             }
         }
         prediction
@@ -127,29 +140,10 @@ impl Image {
 
     fn predicton_5(&self) -> Vec<Vec<Pixel>> {
         let mut prediction: Vec<Vec<Pixel>> =
-            vec![vec![pixel_from(&[0, 0, 0]).unwrap(); self.width]; self.height];
+        vec![vec![[0, 0, 0]; self.width]; self.height];
         for x in 1..self.width {
-            prediction[0][x] = self.img[0][x - 1];
-        }
-        for y in 1..self.height {
-            prediction[y][0] = self.img[y - 1][0] / 2;
-        }
-        for y in 1..self.height {
-            for x in 1..self.width {
-                let north = self.img[y - 1][x];
-                let west = self.img[y][x - 1];
-                let north_west = self.img[y - 1][x - 1];
-                prediction[y][x] = west - north_west / 2 + north / 2;
-            }
-        }
-        prediction
-    }
-
-    fn predicton_6(&self) -> Vec<Vec<Pixel>> {
-        let mut prediction: Vec<Vec<Pixel>> =
-            vec![vec![pixel_from(&[0, 0, 0]).unwrap(); self.width]; self.height];
-        for x in 1..self.width {
-            prediction[0][x] = self.img[0][x - 1] / 2;
+            let west = self.img[0][x - 1];
+            prediction[0][x] = [west[0]/2, west[1]/2, west[2]/2];
         }
         for y in 1..self.height {
             prediction[y][0] = self.img[y - 1][0];
@@ -157,9 +151,30 @@ impl Image {
         for y in 1..self.height {
             for x in 1..self.width {
                 let north = self.img[y - 1][x];
-                let west = self.img[y][x - 1];
+                let west = self.img[y][x -1];
                 let north_west = self.img[y - 1][x];
-                prediction[y][x] = north - north_west / 2 + west / 2;
+                prediction[y][x] = [north[0] - north_west[0] / 2 + west[0] / 2, north[1] - north_west[1] / 2 + west[1] / 2, north[2] - north_west[2] / 2 + west[2] / 2];
+            }
+        }
+        prediction
+    }
+
+    fn predicton_6(&self) -> Vec<Vec<Pixel>> {
+        let mut prediction: Vec<Vec<Pixel>> =
+        vec![vec![[0, 0, 0]; self.width]; self.height];
+        for x in 1..self.width {
+            prediction[0][x] = self.img[0][x-1];
+        }
+        for y in 1..self.height {
+            let north = self.img[y-1][0];
+            prediction[y][0] = [north[0]/2, north[1]/2, north[2]/2];
+        }
+        for y in 1..self.height {
+            for x in 1..self.width {
+                let north = self.img[y - 1][x];
+                let west = self.img[y][x -1];
+                let north_west = self.img[y - 1][x];
+                prediction[y][x] = [west[0] + (north[0] - north_west[0])/2, west[1] + (north[1] - north_west[1])/2, west[2] + (north[2] - north_west[2])/2];
             }
         }
         prediction
@@ -167,18 +182,20 @@ impl Image {
 
     fn predicton_7(&self) -> Vec<Vec<Pixel>> {
         let mut prediction: Vec<Vec<Pixel>> =
-            vec![vec![pixel_from(&[0, 0, 0]).unwrap(); self.width]; self.height];
+        vec![vec![[0, 0, 0]; self.width]; self.height];
         for x in 1..self.width {
-            prediction[0][x] = self.img[0][x - 1] / 2;
+            prediction[0][x] = self.img[0][x - 1];
         }
         for y in 1..self.height {
-            prediction[y][0] = self.img[y][0] / 2;
+            let north = self.img[y][0];
+            prediction[y][0] = [north[0]/2, north[1]/2, north[2]/2];
         }
         for y in 1..self.height {
             for x in 1..self.width {
                 let north = self.img[y - 1][x];
-                let west = self.img[y][x - 1];
-                prediction[y][x] = west / 2 + north / 2;
+                let west = self.img[y][x -1];
+                let north_west = self.img[y - 1][x];
+                prediction[y][x] = [west[0] + (north[0] - north_west[0])/2, west[1] + (north[1] - north_west[1])/2, west[2] + (north[2] - north_west[2])/2];
             }
         }
         prediction
@@ -186,33 +203,32 @@ impl Image {
 
     fn predicton_new(&self) -> Vec<Vec<Pixel>> {
         let mut prediction: Vec<Vec<Pixel>> =
-            vec![vec![pixel_from(&[0, 0, 0]).unwrap(); self.width]; self.height];
+        vec![vec![[0, 0, 0]; self.width]; self.height];
         for y in 1..self.height {
             for x in 1..self.width {
                 let north = if y == 0 {
-                    pixel_from(&[0, 0, 0]).unwrap()
+                    [0, 0, 0]
                 } else {
                     self.img[y - 1][x]
                 };
                 let west = if x == 0 {
-                    pixel_from(&[0, 0, 0]).unwrap()
+                    [0, 0, 0]
                 } else {
                     self.img[y][x - 1]
                 };
-                let north_west = if x == 0 || y == 0 {
-                    pixel_from(&[0, 0, 0]).unwrap()
+                let north_west = if x == 0 || y ==0 {
+                    [0, 0, 0]
                 } else {
                     self.img[y - 1][x - 1]
                 };
-                let mut pixel = pixel_from(&[0, 0, 0]).unwrap();
+                let mut pixel = [0, 0, 0];
                 for c in 0..3 {
                     if north_west[c] >= west[c].max(north[c]) {
                         pixel[c] = west[c].max(north[c]);
                     } else if north_west[c] <= west[c].min(north[c]) {
                         pixel[c] = west[c].min(north[c]);
                     } else {
-                        pixel[c] =
-                            (north[c] as usize + west[c] as usize - north_west[c] as usize) as u8;
+                        pixel[c] = (north[c] as usize + west[c] as usize - north_west[c] as usize) as u8;
                     }
                 }
                 prediction[y][x] = pixel;
@@ -226,56 +242,17 @@ impl Image {
     /// ### Returns
     /// (red, green, blue, all)
     pub fn entropy(&self) -> (f64, f64, f64, f64) {
-        let r = entropy::entropy(
-            &self
-                .img
-                .concat()
-                .par_iter()
-                .map(|x: &Pixel| x[0])
-                .collect::<Vec<u8>>(),
-        );
-        let g = entropy::entropy(
-            &self
-                .img
-                .concat()
-                .par_iter()
-                .map(|x: &Pixel| x[1])
-                .collect::<Vec<u8>>(),
-        );
-        let b = entropy::entropy(
-            &self
-                .img
-                .concat()
-                .par_iter()
-                .map(|x: &Pixel| x[2])
-                .collect::<Vec<u8>>(),
-        );
+        let r = entropy::entropy(&self.img.concat().par_iter().map(|x: &Pixel| x[0]).collect::<Vec<u8>>());
+        let g = entropy::entropy(&self.img.concat().par_iter().map(|x: &Pixel| x[1]).collect::<Vec<u8>>());
+        let b = entropy::entropy(&self.img.concat().par_iter().map(|x: &Pixel| x[2]).collect::<Vec<u8>>());
         let all = entropy::entropy(&self.img.concat());
         (r, g, b, all)
     }
 
     fn entropy2(pixels: &Vec<Vec<Pixel>>) -> (f64, f64, f64, f64) {
-        let r = entropy::entropy(
-            &pixels
-                .concat()
-                .par_iter()
-                .map(|x: &Pixel| x[0])
-                .collect::<Vec<u8>>(),
-        );
-        let g = entropy::entropy(
-            &pixels
-                .concat()
-                .par_iter()
-                .map(|x: &Pixel| x[1])
-                .collect::<Vec<u8>>(),
-        );
-        let b = entropy::entropy(
-            &pixels
-                .concat()
-                .par_iter()
-                .map(|x: &Pixel| x[2])
-                .collect::<Vec<u8>>(),
-        );
+        let r = entropy::entropy(&pixels.concat().par_iter().map(|x: &Pixel| { x[0] }).collect::<Vec<u8>>());
+        let g = entropy::entropy(&pixels.concat().par_iter().map(|x: &Pixel| x[1]).collect::<Vec<u8>>());
+        let b = entropy::entropy(&pixels.concat().par_iter().map(|x: &Pixel| x[2]).collect::<Vec<u8>>());
         let all = entropy::entropy(&pixels.concat());
         (r, g, b, all)
     }

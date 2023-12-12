@@ -12,7 +12,7 @@ fn main() {
     for file_path in &test_files {
         println!("\n\n\t===== {} =====", &file_path[6..]);
         let img = Image::from_tga(file_path);
-        println!("original image: ");
+        println!("Obraz oryginalny: ");
         img.print_entropy();
 
         let mut all: Vec<(String, f64)> = Vec::new();
@@ -21,20 +21,39 @@ fn main() {
         let mut blue: Vec<(String, f64)> = Vec::new();
 
         for predictor in [One, Two, Three, Four, Five, Six, Seven, New] {
-            println!("Predicator {:?}: ", predictor);
+            println!("\nPredykator {:?}: ", predictor);
             let entropies = img.encode(predictor);
-            println!("\tall = {}\n\tr = {}\n\tg = {}\n\tb = {}\n", entropies.0, entropies.1, entropies.2, entropies.3);
+            println!(
+                "\tall = {}\n\tr = {}\n\tg = {}\n\tb = {}",
+                entropies.3, entropies.0, entropies.1, entropies.2
+            );
 
-            all.push((format!("{:?}", predictor), entropies.0));
-            red.push((format!("{:?}", predictor), entropies.1));
-            green.push((format!("{:?}", predictor), entropies.2));
-            blue.push((format!("{:?}", predictor), entropies.3));
+            all.push((format!("{:?}", predictor), entropies.3));
+            red.push((format!("{:?}", predictor), entropies.0));
+            green.push((format!("{:?}", predictor), entropies.1));
+            blue.push((format!("{:?}", predictor), entropies.2));
         }
 
-        println!("Best all: {:?}", all.iter().max_by(|x, y| x.1.total_cmp(&y.1)).unwrap());
-        println!("Best red: {:?}", red.iter().max_by(|x, y| x.1.total_cmp(&y.1)).unwrap());
-        println!("Best green: {:?}", green.iter().max_by(|x, y| x.1.total_cmp(&y.1)).unwrap());
-        println!("Best blue: {:?}", blue.iter().max_by(|x, y| x.1.total_cmp(&y.1)).unwrap());
+        println!(
+            "\nBest all:\n\tPredykator: {}\n\twynik = {}",
+            all.iter().min_by(|x, y| x.1.total_cmp(&y.1)).unwrap().0,
+            all.iter().min_by(|x, y| x.1.total_cmp(&y.1)).unwrap().1
+        );
+        println!(
+            "Best red:\n\tPredykator: {}\n\twynik = {}",
+            red.iter().min_by(|x, y| x.1.total_cmp(&y.1)).unwrap().0,
+            red.iter().min_by(|x, y| x.1.total_cmp(&y.1)).unwrap().1
+        );
+        println!(
+            "Best green:\n\tPredykator: {}\n\twynik = {}",
+            green.iter().min_by(|x, y| x.1.total_cmp(&y.1)).unwrap().0,
+            green.iter().min_by(|x, y| x.1.total_cmp(&y.1)).unwrap().1
+        );
+        println!(
+            "Best blue:\n\tPredykator: {}\n\twynik = {}",
+            blue.iter().min_by(|x, y| x.1.total_cmp(&y.1)).unwrap().0,
+            blue.iter().min_by(|x, y| x.1.total_cmp(&y.1)).unwrap().1
+        );
         println!();
     }
 }
