@@ -139,7 +139,7 @@ impl Image {
                 let north = self.img[y - 1][x];
                 let west = self.img[y][x - 1];
                 let north_west = self.img[y - 1][x - 1];
-                prediction[y][x] = west - north_west / 2 + north / 2;
+                prediction[y][x] = north - north_west / 2 + west / 2;
             }
         }
         prediction
@@ -159,7 +159,7 @@ impl Image {
                 let north = self.img[y - 1][x];
                 let west = self.img[y][x - 1];
                 let north_west = self.img[y - 1][x];
-                prediction[y][x] = north - north_west / 2 + west / 2;
+                prediction[y][x] = west - north_west / 2 + north / 2;
             }
         }
         prediction
@@ -190,29 +190,32 @@ impl Image {
         for y in 1..self.height {
             for x in 1..self.width {
                 let north = if y == 0 {
-                    pixel_from(&[0, 0, 0]).unwrap()
-                } else {
-                    self.img[y - 1][x]
-                };
+                        pixel_from(&[0, 0, 0]).unwrap()
+                    } else {
+                        self.img[y - 1][x]
+                    };
+
                 let west = if x == 0 {
-                    pixel_from(&[0, 0, 0]).unwrap()
-                } else {
-                    self.img[y][x - 1]
-                };
+                        pixel_from(&[0, 0, 0]).unwrap()
+                    } else {
+                        self.img[y][x - 1]
+                    };
+
                 let north_west = if x == 0 || y == 0 {
-                    pixel_from(&[0, 0, 0]).unwrap()
-                } else {
-                    self.img[y - 1][x - 1]
-                };
+                        pixel_from(&[0, 0, 0]).unwrap()
+                    } else {
+                        self.img[y - 1][x - 1]
+                    };
+
                 let mut pixel = pixel_from(&[0, 0, 0]).unwrap();
+
                 for c in 0..3 {
                     if north_west[c] >= west[c].max(north[c]) {
                         pixel[c] = west[c].max(north[c]);
                     } else if north_west[c] <= west[c].min(north[c]) {
                         pixel[c] = west[c].min(north[c]);
                     } else {
-                        pixel[c] =
-                            (north[c] as usize + west[c] as usize - north_west[c] as usize) as u8;
+                        pixel[c] = (north[c] as usize + west[c] as usize - north_west[c] as usize) as u8;
                     }
                 }
                 prediction[y][x] = pixel;
