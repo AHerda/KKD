@@ -1,19 +1,35 @@
 mod lib;
 
+use comfy_table::{
+    modifiers::UTF8_ROUND_CORNERS, presets::UTF8_FULL, CellAlignment, ContentArrangement, Table,
+};
 use lib::image::{Image, Predictor::*};
+use std::fs;
 
 fn main() {
-    let test_files = vec![
-        "testy/example0.tga",
-        "testy/example1.tga",
-        "testy/example2.tga",
-        "testy/example3.tga",
-    ];
+    let test_files: Vec<_> = fs::read_dir("./testy")
+        .unwrap()
+        .map(|file| file.unwrap().path().display().to_string())
+        .collect();
+
     for file_path in &test_files {
-        println!("\n\n\t===== {} =====", &file_path[6..]);
+        let mut table = Table::new();
+        table
+            .load_preset(UTF8_FULL)
+            .apply_modifier(UTF8_ROUND_CORNERS)
+            .set_content_arrangement(ContentArrangement::Dynamic);
+
+        println!("\n\n\t===== {} =====", &file_path[8..]);
+        table.set_header(vec!["", "All", "red", "green", "blue"]);
         let img = Image::from_tga(file_path);
-        println!("Obraz oryginalny: ");
-        img.print_entropy();
+        let (r, g, b, a) = img.entropy();
+        table.add_row(vec![
+            "Original image".to_string(),
+            format!("{:.4}", a),
+            format!("{:.4}", r),
+            format!("{:.4}", g),
+            format!("{:.4}", b),
+        ]);
 
         let mut all: Vec<(String, f64)> = Vec::new();
         let mut red: Vec<(String, f64)> = Vec::new();
@@ -21,39 +37,40 @@ fn main() {
         let mut blue: Vec<(String, f64)> = Vec::new();
 
         for predictor in [One, Two, Three, Four, Five, Six, Seven, New] {
-            println!("\nPredykator {:?}: ", predictor);
-            let entropies = img.encode(predictor);
-            println!(
-                "\tall = {}\n\tr = {}\n\tg = {}\n\tb = {}",
-                entropies.3, entropies.0, entropies.1, entropies.2
-            );
+            let (r, g, b, a) = img.encode(predictor);
+            table.add_row(vec![
+                format!("{:?}", predictor),
+                format!("{:.4}", a),
+                format!("{:.4}", r),
+                format!("{:.4}", g),
+                format!("{:.4}", b),
+            ]);
 
-            all.push((format!("{:?}", predictor), entropies.3));
-            red.push((format!("{:?}", predictor), entropies.0));
-            green.push((format!("{:?}", predictor), entropies.1));
-            blue.push((format!("{:?}", predictor), entropies.2));
+            all.push((format!("{:?}", predictor), a));
+            red.push((format!("{:?}", predictor), r));
+            green.push((format!("{:?}", predictor), g));
+            blue.push((format!("{:?}", predictor), b));
         }
+        table.add_row(vec![
+            "Best".to_string(),
+            format!(
+                "{:.4}",
+                all.iter().min_by(|x, y| x.1.total_cmp(&y.1)).unwrap().0,
+            ),
+            format!(
+                "{:.4}",
+                red.iter().min_by(|x, y| x.1.total_cmp(&y.1)).unwrap().0,
+            ),
+            format!(
+                "{:.4}",
+                green.iter().min_by(|x, y| x.1.total_cmp(&y.1)).unwrap().0,
+            ),
+            format!(
+                "{:.4}",
+                blue.iter().min_by(|x, y| x.1.total_cmp(&y.1)).unwrap().0
+            ),
+        ]);
 
-        println!(
-            "\nBest all:\n\tPredykator: {}\n\twynik = {}",
-            all.iter().min_by(|x, y| x.1.total_cmp(&y.1)).unwrap().0,
-            all.iter().min_by(|x, y| x.1.total_cmp(&y.1)).unwrap().1
-        );
-        println!(
-            "Best red:\n\tPredykator: {}\n\twynik = {}",
-            red.iter().min_by(|x, y| x.1.total_cmp(&y.1)).unwrap().0,
-            red.iter().min_by(|x, y| x.1.total_cmp(&y.1)).unwrap().1
-        );
-        println!(
-            "Best green:\n\tPredykator: {}\n\twynik = {}",
-            green.iter().min_by(|x, y| x.1.total_cmp(&y.1)).unwrap().0,
-            green.iter().min_by(|x, y| x.1.total_cmp(&y.1)).unwrap().1
-        );
-        println!(
-            "Best blue:\n\tPredykator: {}\n\twynik = {}",
-            blue.iter().min_by(|x, y| x.1.total_cmp(&y.1)).unwrap().0,
-            blue.iter().min_by(|x, y| x.1.total_cmp(&y.1)).unwrap().1
-        );
-        println!();
+        print!("{table}");
     }
 }

@@ -30,18 +30,21 @@ impl Image {
         let img_bytes = &file[18..(3 * width * height + 18)];
         let depth = file[16];
 
+        // print!("{}\n{}", file.len(), img_bytes.len());
+
         info!("width: {}", &width);
         info!("height: {}", &height);
         info!("depth: {}", &depth);
         info!("image size: {}B", img_bytes.len());
 
-        let img = img_bytes
+        let mut img = img_bytes
             .chunks(3)
-            .map(|pixel| pixel_from(pixel).unwrap())
+            .map(|pixel| pixel_from(&[pixel[2], pixel[1], pixel[0]]).unwrap())
             .collect::<Vec<Pixel>>()
             .chunks(width)
             .map(|v| Vec::from(v))
             .collect::<Vec<Vec<Pixel>>>();
+        img.reverse();
 
         Image { width, height, img }
     }
@@ -119,7 +122,7 @@ impl Image {
                 let north = self.img[y - 1][x];
                 let west = self.img[y][x - 1];
                 let north_west = self.img[y - 1][x - 1];
-                prediction[y][x] = west - north_west + north;
+                prediction[y][x] = west + north - north_west;
             }
         }
         prediction
@@ -139,7 +142,7 @@ impl Image {
                 let north = self.img[y - 1][x];
                 let west = self.img[y][x - 1];
                 let north_west = self.img[y - 1][x - 1];
-                prediction[y][x] = north - north_west / 2 + west / 2;
+                prediction[y][x] = north + (west - north_west) / 2;
             }
         }
         prediction
@@ -159,7 +162,7 @@ impl Image {
                 let north = self.img[y - 1][x];
                 let west = self.img[y][x - 1];
                 let north_west = self.img[y - 1][x];
-                prediction[y][x] = west - north_west / 2 + north / 2;
+                prediction[y][x] = west + (north - north_west) / 2;
             }
         }
         prediction
@@ -178,7 +181,7 @@ impl Image {
             for x in 1..self.width {
                 let north = self.img[y - 1][x];
                 let west = self.img[y][x - 1];
-                prediction[y][x] = west / 2 + north / 2;
+                prediction[y][x] = (west + north) / 2;
             }
         }
         prediction
@@ -190,32 +193,32 @@ impl Image {
         for y in 1..self.height {
             for x in 1..self.width {
                 let north = if y == 0 {
-                        pixel_from(&[0, 0, 0]).unwrap()
-                    } else {
-                        self.img[y - 1][x]
-                    };
+                    pixel_from(&[0, 0, 0]).unwrap()
+                } else {
+                    self.img[y - 1][x]
+                };
 
                 let west = if x == 0 {
-                        pixel_from(&[0, 0, 0]).unwrap()
-                    } else {
-                        self.img[y][x - 1]
-                    };
+                    pixel_from(&[0, 0, 0]).unwrap()
+                } else {
+                    self.img[y][x - 1]
+                };
 
                 let north_west = if x == 0 || y == 0 {
-                        pixel_from(&[0, 0, 0]).unwrap()
-                    } else {
-                        self.img[y - 1][x - 1]
-                    };
+                    pixel_from(&[0, 0, 0]).unwrap()
+                } else {
+                    self.img[y - 1][x - 1]
+                };
 
                 let mut pixel = pixel_from(&[0, 0, 0]).unwrap();
 
                 for c in 0..3 {
                     if north_west[c] >= west[c].max(north[c]) {
-                        pixel[c] = west[c].max(north[c]);
-                    } else if north_west[c] <= west[c].min(north[c]) {
                         pixel[c] = west[c].min(north[c]);
+                    } else if north_west[c] <= west[c].min(north[c]) {
+                        pixel[c] = west[c].max(north[c]);
                     } else {
-                        pixel[c] = (north[c] as usize + west[c] as usize - north_west[c] as usize) as u8;
+                        pixel[c] = north[c].wrapping_add(west[c]).wrapping_sub(north_west[c]);
                     }
                 }
                 prediction[y][x] = pixel;

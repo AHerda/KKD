@@ -16,9 +16,9 @@ impl Add for Pixel {
 
     fn add(self, rhs: Self) -> Self::Output {
         Pixel {
-            red: self.red.saturating_add(rhs.red),
-            green: self.green.saturating_add(rhs.green),
-            blue: self.blue.saturating_add(rhs.blue),
+            red: self.red.wrapping_add(rhs.red),
+            green: self.green.wrapping_add(rhs.green),
+            blue: self.blue.wrapping_add(rhs.blue),
         }
     }
 }
@@ -28,9 +28,9 @@ impl Sub for Pixel {
 
     fn sub(self, rhs: Self) -> Self::Output {
         Pixel {
-            red: self.red.saturating_sub(rhs.red),
-            green: self.green.saturating_sub(rhs.green),
-            blue: self.blue.saturating_sub(rhs.blue),
+            red: self.red.wrapping_sub(rhs.red),
+            green: self.green.wrapping_sub(rhs.green),
+            blue: self.blue.wrapping_sub(rhs.blue),
         }
     }
 }
@@ -97,13 +97,12 @@ pub fn pixel_from(colors: &[u8]) -> Result<Pixel, Error> {
     }
 }
 
-
 impl Pixel {
-	pub fn abs_diff(&self, other: Pixel) -> Pixel {
-		Pixel {
-			red: (self.red as i16 - other.red as i16).abs() as u8,
-			green: (self.green as i16 - other.green as i16).abs() as u8,
-			blue: (self.blue as i16 - other.blue as i16).abs() as u8,
-		}
-	}
+    pub fn abs_diff(&self, other: Pixel) -> Self {
+        Self {
+            red: self.red.wrapping_sub(other.red),
+            green: self.green.wrapping_sub(other.green),
+            blue: self.blue.wrapping_sub(other.blue),
+        }
+    }
 }
