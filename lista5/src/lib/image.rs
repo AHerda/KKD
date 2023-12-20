@@ -1,10 +1,9 @@
-use super::pixel::{pixel_from, pixel_from_bgr, Pixel};
+use super::pixel::{pixel_from_bgr, Pixel};
 use entropy;
 
 use image::{ImageBuffer, RgbImage};
 use log::info;
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
-use rayon::prelude::*;
 
 #[derive(Debug)]
 pub struct Image {
@@ -73,11 +72,9 @@ impl Image {
         let mut codebook: Vec<Pixel> = Vec::new();
         let c_0 = avg_vec(&training_vectors);
 
-        //println!("{:?}", &c_0);
         codebook.push(c_0);
         while codebook.len() < cluster_count {
             codebook = lgb(&training_vectors, &codebook);
-            //println!("{:?}", &codebook);
         }
         codebook
     }
@@ -217,7 +214,7 @@ fn lgb(training_vectors: &[Pixel], codebook: &Vec<Pixel>) -> Vec<Pixel> {
             break;
         }
         prev_distortion = current_distortion;
-        new_codebook = clusters.iter().map(|cluster| avg_vec(cluster)).collect();
+        new_codebook = clusters.par_iter().map(|cluster| avg_vec(cluster)).collect();
     }
     new_codebook
 }

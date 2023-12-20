@@ -25,10 +25,10 @@ fn main() {
     );
 
     let codebook = img.quantization(color_count);
-    let quantized_img = img.codebook_to_tga(&codebook);
+        let quantized_img = img.codebook_to_tga(&codebook);
 
     let mut output = File::create(output_path).unwrap();
-    output.write_all(&quantized_img).unwrap();
+        output.write_all(&quantized_img).unwrap();
 
     let start = output_path.find("/").unwrap_or(usize::MAX).wrapping_add(1);
     let end = output_path.len() - 4;
@@ -75,7 +75,10 @@ mod tests {
             "testy/example3.tga",
         ] {
             let img = Image::from_tga_file(path);
-            println!("{:?}", img.quantization(4));
+            for i in 1..5 {
+                let result = img.quantization(i);
+                assert_eq!(result.len(), 2_usize.pow(i as u32));
+            }
         }
     }
 }

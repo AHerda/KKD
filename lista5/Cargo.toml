@@ -10,4 +10,3 @@ entropy = { version = "0.1.0", path = "../entropy" }
 image = "0.24.7"
 log = "0.4.20"
 rayon = "1.8.0"
-tokio = { version = "1.35.1", features = ["full"] }
