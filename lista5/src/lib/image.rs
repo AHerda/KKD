@@ -1,240 +1,123 @@
-use log::info;
-use std::fmt::Error;
+use super::pixel::{pixel_from, pixel_from_bgr, Pixel};
 use entropy;
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
-pub type Pixel = [u8; 3];
-
-#[derive(Debug, Clone, Copy)]
-pub enum Predictor {
-    One,
-    Two,
-    Three,
-    Four,
-    Five,
-    Six,
-    Seven,
-    New
-}
-
-fn pixel_from(colors: &[u8]) -> Result<Pixel, Error> {
-    if colors.len() != 3 {
-        Err(Error)
-    } else {
-        Ok([colors[0], colors[1], colors[2]])
-    }
-}
+use image::{ImageBuffer, RgbImage};
+use log::info;
+use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use rayon::prelude::*;
 
 #[derive(Debug)]
 pub struct Image {
     pub width: usize,
     pub height: usize,
     pub img: Vec<Vec<Pixel>>,
+    pub header: Vec<u8>,
+    pub footer: Vec<u8>,
 }
 
 impl Image {
-    pub fn from_tga(path: &str) -> Image {
+    pub fn from_tga_file(path: &str) -> Image {
         let file = std::fs::read(path).unwrap();
-        let width = usize::from(u16::from_le_bytes([file[12], file[13]]));
-        let height = usize::from(u16::from_le_bytes([file[14], file[15]]));
-        let img_bytes = &file[18..(3 * width * height + 18)];
-        let depth = file[16];
+        Self::from_tga(&file)
+    }
+
+    pub fn from_tga(content: &[u8]) -> Image {
+        let width = usize::from(u16::from_le_bytes([content[12], content[13]]));
+        let height = usize::from(u16::from_le_bytes([content[14], content[15]]));
+        let img_bytes = &content[18..(3 * width * height + 18)];
+        let depth = content[16];
 
         info!("width: {}", &width);
         info!("height: {}", &height);
         info!("depth: {}", &depth);
         info!("image size: {}B", img_bytes.len());
 
-        let img = img_bytes
+        let header: Vec<u8> = content[..18].to_vec();
+        let footer: Vec<u8> = content[(3 * width * height + 18)..].to_vec();
+
+        let mut img = img_bytes
             .chunks(3)
-            .map(|pixel| pixel_from(pixel).unwrap())
+            .map(|pixel| pixel_from_bgr(pixel).unwrap())
             .collect::<Vec<Pixel>>()
             .chunks(width)
             .map(|v| Vec::from(v))
             .collect::<Vec<Vec<Pixel>>>();
 
-        Image { width, height, img }
+        img.reverse();
+
+        Image {
+            width,
+            height,
+            img,
+            header,
+            footer,
+        }
     }
 
-    pub fn encode(&self, predictor: Predictor) -> (f64, f64, f64, f64) {
-        let prediction = match predictor {
-            Predictor::One => self.predicton_1(),
-            Predictor::Two => self.predicton_2(),
-            Predictor::Three => self.predicton_3(),
-            Predictor::Four => self.predicton_4(),
-            Predictor::Five => self.predicton_5(),
-            Predictor::Six => self.predicton_6(),
-            Predictor::Seven => self.predicton_7(),
-            Predictor::New => self.predicton_new(),
-        };
-        let diff = self.diff(prediction);
-        Self::entropy2(&diff)
+    pub fn save_as_png(&self, path: &str) {
+        let mut img: RgbImage = ImageBuffer::new(self.width as u32, self.height as u32);
+
+        for (x, y, pixel) in img.enumerate_pixels_mut() {
+            let rgb = self.img[y as usize][x as usize].to_bytes_rgb();
+            *pixel = image::Rgb([rgb[0], rgb[1], rgb[2]]);
+        }
+
+        println!("Saving image to {}... ", path);
+        img.save(path).unwrap();
     }
 
-    pub fn diff(&self, prediction: Vec<Vec<Pixel>>) -> Vec<Vec<Pixel>> {
-        let mut diff: Vec<Vec<Pixel>> =
-            vec![vec![[0, 0, 0]; self.width]; self.height];
-        for y in 0..self.height {
-            for x in 0..self.width {
-                let red_diff = self.img[y][x][0].abs_diff(prediction[y][x][0]);
-                let green_diff = self.img[y][x][1].abs_diff(prediction[y][x][1]);
-                let blue_diff = self.img[y][x][2].abs_diff(prediction[y][x][2]);
-                diff[y][x] =  [red_diff, green_diff, blue_diff];
-            }
+    pub fn quantization(&self, color_count: usize) -> Vec<Pixel> {
+        let cluster_count = 2_usize.pow(color_count as u32);
+
+        let training_vectors: Vec<Pixel> = self.img.concat().clone();
+        let mut codebook: Vec<Pixel> = Vec::new();
+        let c_0 = avg_vec(&training_vectors);
+
+        //println!("{:?}", &c_0);
+        codebook.push(c_0);
+        while codebook.len() < cluster_count {
+            codebook = lgb(&training_vectors, &codebook);
+            //println!("{:?}", &codebook);
         }
-        diff
+        codebook
     }
 
-    fn predicton_1(&self) -> Vec<Vec<Pixel>> {
-        let mut prediction: Vec<Vec<Pixel>> =
-            vec![vec![[0, 0, 0]; self.width]; self.height];
-        for y in 0..self.height {
-            for x in 1..self.width {
-                prediction[y][x] = self.img[y][x - 1];
-            }
-        }
-        prediction
-    }
+    pub fn codebook_to_tga(&self, codebook: &[Pixel]) -> Vec<u8> {
+        let mut temp = self.img.clone();
+        temp.reverse();
+        let vectors: Vec<Pixel> = temp.concat();
 
-    fn predicton_2(&self) -> Vec<Vec<Pixel>> {
-        let mut prediction: Vec<Vec<Pixel>> =
-            vec![vec![[0, 0, 0]; self.width]; self.height];
-        for y in 1..self.height {
-            for x in 0..self.width {
-                prediction[y][x] = self.img[y - 1][x];
-            }
-        }
-        prediction
-    }
+        let mut output = Vec::new();
+        let mut out_vector = Vec::new();
 
-    fn predicton_3(&self) -> Vec<Vec<Pixel>> {
-        let mut prediction: Vec<Vec<Pixel>> =
-            vec![vec![[0, 0, 0]; self.width]; self.height];
-        for y in 1..self.height {
-            for x in 1..self.width {
-                prediction[y][x] = self.img[y - 1][x - 1];
-            }
-        }
-        prediction
-    }
+        output.append(&mut self.header.clone());
 
-    fn predicton_4(&self) -> Vec<Vec<Pixel>> {
-        let mut prediction: Vec<Vec<Pixel>> =
-        vec![vec![[0, 0, 0]; self.width]; self.height];
-        for x in 1..self.width {
-            prediction[0][x] = self.img[0][x -1];
-        }
-        for y in 1..self.height {
-            prediction[y][0] = self.img[y - 1][0];
-        }
-        for y in 1..self.height {
-            for x in 1..self.width {
-                let north = self.img[y - 1][x];
-                let west = self.img[y][x -1];
-                let north_west = self.img[y - 1][x];
-                prediction[y][x] = [north[0] - north_west[0] + west[0], north[1] - north_west[1] + west[1], north[2] - north_west[2] + west[2]];
-            }
-        }
-        prediction
-    }
+        for vector in &vectors {
+            let coded = codebook.par_iter().min_by_key(|c| c.dist(&vector)).unwrap();
 
-    fn predicton_5(&self) -> Vec<Vec<Pixel>> {
-        let mut prediction: Vec<Vec<Pixel>> =
-        vec![vec![[0, 0, 0]; self.width]; self.height];
-        for x in 1..self.width {
-            let west = self.img[0][x - 1];
-            prediction[0][x] = [west[0]/2, west[1]/2, west[2]/2];
+            out_vector.push(coded);
+            output.append(&mut coded.to_bytes_brg());
         }
-        for y in 1..self.height {
-            prediction[y][0] = self.img[y - 1][0];
-        }
-        for y in 1..self.height {
-            for x in 1..self.width {
-                let north = self.img[y - 1][x];
-                let west = self.img[y][x -1];
-                let north_west = self.img[y - 1][x];
-                prediction[y][x] = [north[0] - north_west[0] / 2 + west[0] / 2, north[1] - north_west[1] / 2 + west[1] / 2, north[2] - north_west[2] / 2 + west[2] / 2];
-            }
-        }
-        prediction
-    }
 
-    fn predicton_6(&self) -> Vec<Vec<Pixel>> {
-        let mut prediction: Vec<Vec<Pixel>> =
-        vec![vec![[0, 0, 0]; self.width]; self.height];
-        for x in 1..self.width {
-            prediction[0][x] = self.img[0][x-1];
-        }
-        for y in 1..self.height {
-            let north = self.img[y-1][0];
-            prediction[y][0] = [north[0]/2, north[1]/2, north[2]/2];
-        }
-        for y in 1..self.height {
-            for x in 1..self.width {
-                let north = self.img[y - 1][x];
-                let west = self.img[y][x -1];
-                let north_west = self.img[y - 1][x];
-                prediction[y][x] = [west[0] + (north[0] - north_west[0])/2, west[1] + (north[1] - north_west[1])/2, west[2] + (north[2] - north_west[2])/2];
-            }
-        }
-        prediction
-    }
+        let mse: f64 = out_vector
+            .par_iter()
+            .zip(vectors.par_iter())
+            .map(|(original, out)| original.dist(out).pow(2) as f64)
+            .sum::<f64>()
+            / vectors.len() as f64;
 
-    fn predicton_7(&self) -> Vec<Vec<Pixel>> {
-        let mut prediction: Vec<Vec<Pixel>> =
-        vec![vec![[0, 0, 0]; self.width]; self.height];
-        for x in 1..self.width {
-            prediction[0][x] = self.img[0][x - 1];
-        }
-        for y in 1..self.height {
-            let north = self.img[y][0];
-            prediction[y][0] = [north[0]/2, north[1]/2, north[2]/2];
-        }
-        for y in 1..self.height {
-            for x in 1..self.width {
-                let north = self.img[y - 1][x];
-                let west = self.img[y][x -1];
-                let north_west = self.img[y - 1][x];
-                prediction[y][x] = [west[0] + (north[0] - north_west[0])/2, west[1] + (north[1] - north_west[1])/2, west[2] + (north[2] - north_west[2])/2];
-            }
-        }
-        prediction
-    }
+        let snr = (vectors
+            .par_iter()
+            .map(|v| (v[0].pow(2) + v[1].pow(2) + v[2].pow(2)) as f64)
+            .sum::<f64>()
+            / vectors.len() as f64)
+            / mse;
 
-    fn predicton_new(&self) -> Vec<Vec<Pixel>> {
-        let mut prediction: Vec<Vec<Pixel>> =
-        vec![vec![[0, 0, 0]; self.width]; self.height];
-        for y in 1..self.height {
-            for x in 1..self.width {
-                let north = if y == 0 {
-                    [0, 0, 0]
-                } else {
-                    self.img[y - 1][x]
-                };
-                let west = if x == 0 {
-                    [0, 0, 0]
-                } else {
-                    self.img[y][x - 1]
-                };
-                let north_west = if x == 0 || y ==0 {
-                    [0, 0, 0]
-                } else {
-                    self.img[y - 1][x - 1]
-                };
-                let mut pixel = [0, 0, 0];
-                for c in 0..3 {
-                    if north_west[c] >= west[c].max(north[c]) {
-                        pixel[c] = west[c].max(north[c]);
-                    } else if north_west[c] <= west[c].min(north[c]) {
-                        pixel[c] = west[c].min(north[c]);
-                    } else {
-                        pixel[c] = (north[c] as usize + west[c] as usize - north_west[c] as usize) as u8;
-                    }
-                }
-                prediction[y][x] = pixel;
-            }
-        }
-        prediction
+        println!("MSE: {:?}", &mse);
+        println!("SNR: {:?}", &snr);
+
+        output.append(&mut self.footer.clone());
+        output
     }
 
     /// Calculates entropy of red, blue and green  part of pixels and also of whole pixels.
@@ -242,17 +125,31 @@ impl Image {
     /// ### Returns
     /// (red, green, blue, all)
     pub fn entropy(&self) -> (f64, f64, f64, f64) {
-        let r = entropy::entropy(&self.img.concat().par_iter().map(|x: &Pixel| x[0]).collect::<Vec<u8>>());
-        let g = entropy::entropy(&self.img.concat().par_iter().map(|x: &Pixel| x[1]).collect::<Vec<u8>>());
-        let b = entropy::entropy(&self.img.concat().par_iter().map(|x: &Pixel| x[2]).collect::<Vec<u8>>());
-        let all = entropy::entropy(&self.img.concat());
-        (r, g, b, all)
+        Self::entropy2(&self.img)
     }
 
     fn entropy2(pixels: &Vec<Vec<Pixel>>) -> (f64, f64, f64, f64) {
-        let r = entropy::entropy(&pixels.concat().par_iter().map(|x: &Pixel| { x[0] }).collect::<Vec<u8>>());
-        let g = entropy::entropy(&pixels.concat().par_iter().map(|x: &Pixel| x[1]).collect::<Vec<u8>>());
-        let b = entropy::entropy(&pixels.concat().par_iter().map(|x: &Pixel| x[2]).collect::<Vec<u8>>());
+        let r = entropy::entropy(
+            &pixels
+                .concat()
+                .par_iter()
+                .map(|x: &Pixel| x[0])
+                .collect::<Vec<u8>>(),
+        );
+        let g = entropy::entropy(
+            &pixels
+                .concat()
+                .par_iter()
+                .map(|x: &Pixel| x[1])
+                .collect::<Vec<u8>>(),
+        );
+        let b = entropy::entropy(
+            &pixels
+                .concat()
+                .par_iter()
+                .map(|x: &Pixel| x[2])
+                .collect::<Vec<u8>>(),
+        );
         let all = entropy::entropy(&pixels.concat());
         (r, g, b, all)
     }
@@ -261,4 +158,66 @@ impl Image {
         let (r, g, b, all) = self.entropy();
         println!("\tall = {}\n\tr = {}\n\tg = {}\n\tb = {}", all, r, g, b);
     }
+}
+
+fn avg_vec(vecs: &[Pixel]) -> Pixel {
+    let (sum, count) = vecs
+        .par_iter()
+        .map(|&pixel| ((pixel[0] as u64, pixel[1] as u64, pixel[2] as u64), 1u64))
+        .reduce(|| ((0, 0, 0), 0), |a, b| ((a.0 .0 + b.0 .0, a.0 .1 + b.0 .1, a.0 .2 + b.0 .2), a.1 + b.1));
+
+    let size = count as f64;
+    Pixel::new((sum.0 as f64 / size) as u8, (sum.1 as f64 / size) as u8, (sum.2 as f64 / size) as u8)
+}
+
+// fn avg_vec(vecs: &[Pixel]) -> Pixel {
+//     let size = vecs.len() as f64;
+//     let mut avg_vec = (0_f64, 0_f64, 0_f64);
+//     for vector in vecs {
+//         avg_vec.0 += vector[0] as f64 / size;
+//         avg_vec.1 += vector[1] as f64 / size;
+//         avg_vec.2 += vector[2] as f64 / size;
+//     }
+//     Pixel::new(avg_vec.0 as u8, avg_vec.1 as u8, avg_vec.2 as u8)
+// }
+
+
+fn lgb(training_vectors: &[Pixel], codebook: &Vec<Pixel>) -> Vec<Pixel> {
+    let mut prev_distortion = 0;
+    let mut new_codebook = Vec::new();
+
+    for c in codebook {
+        let perturbation = c.perturbation(1);
+        new_codebook.push(perturbation.0);
+        new_codebook.push(perturbation.1);
+    }
+
+    loop {
+        let mut clusters: Vec<Vec<Pixel>> = vec![Vec::new(); new_codebook.len()];
+        for vector in training_vectors {
+            let assignment = new_codebook
+                .iter()
+                .map(|centroid| vector.dist(centroid))
+                .enumerate()
+                .min_by_key(|(_idx, dist)| *dist)
+                .unwrap()
+                .0;
+            clusters[assignment].push(*vector);
+        }
+        let mut current_distortion = 0;
+        for (idx, cluster) in clusters.iter().enumerate() {
+            current_distortion += cluster
+                .iter()
+                .map(|vector| new_codebook[idx].dist(vector))
+                .sum::<usize>();
+        }
+        if ((current_distortion as f64 - prev_distortion as f64) / current_distortion as f64).abs()
+            < 0.0001
+        {
+            break;
+        }
+        prev_distortion = current_distortion;
+        new_codebook = clusters.iter().map(|cluster| avg_vec(cluster)).collect();
+    }
+    new_codebook
 }

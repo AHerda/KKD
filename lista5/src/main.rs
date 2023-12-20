@@ -1,60 +1,81 @@
-use std::fs;
+mod lib;
+
+use std::{env, fs::File, io::Write};
+
+use lib::image::Image;
 
 fn main() {
-    let test_files: Vec<_> = fs::read_dir("./testy")
-        .unwrap()
-        .map(|file| {
-            file
-                .unwrap()
-                .path()
-                .display()
-                .to_string()
-        })
-        .collect();
+    let args: Vec<String> = env::args().collect();
+    if args.len() < 3 {
+        panic!("Wrong argument count")
+    }
 
-    println!("{test_files:?}");
+    let input_path = args.get(1).unwrap();
+    let output_path = args.get(2).unwrap();
+    let color_count: usize = args.get(3).unwrap().parse().unwrap();
 
-    // for file_path in &test_files {
-    //     println!("\n\n\t===== {} =====", &file_path[6..]);
-    //     let img = Image::from_tga(file_path);
-    //     println!("original image: ");
-    //     img.print_entropy();
+    let img = Image::from_tga_file(input_path);
+    // print!("{}", input_path);
+    img.save_as_png(
+        format!(
+            "./pics/originals/{}.png",
+            &input_path[6..input_path.len() - 4]
+        )
+        .as_str(),
+    );
 
-    //     let mut all: Vec<(String, f64)> = Vec::new();
-    //     let mut red: Vec<(String, f64)> = Vec::new();
-    //     let mut green: Vec<(String, f64)> = Vec::new();
-    //     let mut blue: Vec<(String, f64)> = Vec::new();
+    let codebook = img.quantization(color_count);
+    let quantized_img = img.codebook_to_tga(&codebook);
 
-    //     for predictor in [One, Two, Three, Four, Five, Six, Seven, New] {
-    //         println!("Predicator {:?}: ", predictor);
-    //         let entropies = img.encode(predictor);
-    //         println!(
-    //             "\tall = {}\n\tr = {}\n\tg = {}\n\tb = {}\n",
-    //             entropies.0, entropies.1, entropies.2, entropies.3
-    //         );
+    let mut output = File::create(output_path).unwrap();
+    output.write_all(&quantized_img).unwrap();
 
-    //         all.push((format!("{:?}", predictor), entropies.0));
-    //         red.push((format!("{:?}", predictor), entropies.1));
-    //         green.push((format!("{:?}", predictor), entropies.2));
-    //         blue.push((format!("{:?}", predictor), entropies.3));
-    //     }
+    let start = output_path.find("/").unwrap_or(usize::MAX).wrapping_add(1);
+    let end = output_path.len() - 4;
+    let raw_name = &output_path[start..end];
 
-    //     println!(
-    //         "Best all: {:?}",
-    //         all.iter().max_by(|x, y| x.1.total_cmp(&y.1)).unwrap()
-    //     );
-    //     println!(
-    //         "Best red: {:?}",
-    //         red.iter().max_by(|x, y| x.1.total_cmp(&y.1)).unwrap()
-    //     );
-    //     println!(
-    //         "Best green: {:?}",
-    //         green.iter().max_by(|x, y| x.1.total_cmp(&y.1)).unwrap()
-    //     );
-    //     println!(
-    //         "Best blue: {:?}",
-    //         blue.iter().max_by(|x, y| x.1.total_cmp(&y.1)).unwrap()
-    //     );
-    //     println!();
-    // }
+    Image::from_tga(&quantized_img).save_as_png(format!("pics/{}.png", raw_name).as_str());
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::*;
+
+    #[test]
+    fn imige_ingest_test() {
+        for path in [
+            "testy/example0.tga",
+            "testy/example1.tga",
+            "testy/example2.tga",
+            "testy/example3.tga",
+        ] {
+            Image::from_tga_file(path);
+        }
+    }
+    #[test]
+    fn color_test() {
+        let img = Image::from_tga_file("testy/example1.tga");
+        assert_eq!(img.img[0][0], lib::pixel::Pixel::new(0xFF, 0, 0xFF));
+        assert_eq!(img.img[img.height - 1][0], lib::pixel::Pixel::new(0, 0, 0));
+        assert_eq!(
+            img.img[0][img.width - 1],
+            lib::pixel::Pixel::new(0xFE, 0xFF, 0xFF)
+        );
+        assert_eq!(
+            img.img[img.height - 1][img.width - 1],
+            lib::pixel::Pixel::new(0xFF, 0xFF, 0)
+        );
+    }
+    #[test]
+    fn quantization_test() {
+        for path in [
+            "testy/example0.tga",
+            "testy/example1.tga",
+            "testy/example2.tga",
+            "testy/example3.tga",
+        ] {
+            let img = Image::from_tga_file(path);
+            println!("{:?}", img.quantization(4));
+        }
+    }
 }
